@@ -81,29 +81,35 @@ Put this in a project's `run` script and never think about ports again.
 ### Managing registrations
 
 ```bash
-# List all registered projects and their ports
-phx-port --list
+# Show ports as a directory tree with clickable URLs (default)
+phx-port list
 
-# Show ports as a directory tree
-phx-port --list --tree
+# Flat list of all registered projects and their ports
+phx-port list --flat
 
-# Show tree with clickable URLs
-phx-port --list --tree --show-as-http-url
+# Tree view with port numbers instead of URLs
+phx-port list --port-only
 
 # Explicitly register the current directory (default role: main)
-phx-port --register
+phx-port register
 
 # Register a named port role
-phx-port --register debug
+phx-port register debug
 
 # Remove all ports for a project — by port number, directory name, or current directory
-phx-port --delete 4003
-phx-port --delete admin_dashboard
-phx-port --delete .
+phx-port delete 4003
+phx-port delete admin_dashboard
+phx-port delete .
 
 # Remove a specific port role
-phx-port --delete . debug
-phx-port --delete admin_dashboard metrics
+phx-port delete . debug
+phx-port delete admin_dashboard metrics
+
+# Open the default browser for the current directory's port
+phx-port open
+
+# Open the browser for a named port role
+phx-port open debug
 ```
 
 ### Interactive mode
@@ -113,7 +119,7 @@ Running `phx-port` with no arguments in a terminal shows the help text. This way
 ## Example workflow
 
 ```
-~/projects/shop $ phx-port --list
+~/projects/shop $ phx-port list --flat
  4001  /home/user/projects/api
  4002  /home/user/projects/admin
 
@@ -125,7 +131,7 @@ Registered /home/user/projects/shop → port 4003    # ← stderr, first time on
 Registered /home/user/projects/shop (debug) → port 4004    # ← new role
 [info] Running ShopWeb.Endpoint on http://localhost:4003
 
-~/projects/shop $ phx-port --list
+~/projects/shop $ phx-port list --flat
  4001  /home/user/projects/api
  4002  /home/user/projects/admin
  4003  /home/user/projects/shop
@@ -134,27 +140,27 @@ Registered /home/user/projects/shop (debug) → port 4004    # ← new role
 
 ### Tree view
 
-With many projects, the tree view gives a cleaner overview grouped by directory structure. Single-child directories are collapsed automatically:
+With many projects, the tree view (the default) gives a cleaner overview grouped by directory structure. Single-child directories are collapsed automatically, and ports are shown as clickable URLs:
 
 ```
-$ phx-port --list --tree
-/home/user
-├── projects
-│   ├── api ......... 4001
-│   ├── admin ....... 4002
-│   └── shop ........ 4003, 4004 (debug)
-└── work/services ... 4005
-```
-
-Add `--show-as-http-url` to make ports clickable in terminals that support hyperlinks:
-
-```
-$ phx-port --list --tree --show-as-http-url
+$ phx-port list
 /home/user
 ├── projects
 │   ├── api ......... http://localhost:4001
+│   ├── admin ....... http://localhost:4002
 │   └── shop ........ http://localhost:4003, http://localhost:4004 (debug)
 └── work/services ... http://localhost:4005
+```
+
+Add `--port-only` to show just port numbers instead of URLs:
+
+```
+$ phx-port list --port-only
+/home/user
+├── projects
+│   ├── api ......... 4001
+│   └── shop ........ 4003, 4004 (debug)
+└── work/services ... 4005
 ```
 
 ## License

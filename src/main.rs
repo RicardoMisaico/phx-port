@@ -16,14 +16,15 @@ USAGE:
     PORT=$(phx-port) iex -S mix phx.server
     PORT=$(phx-port) PORT_DEBUG=$(phx-port debug) my-app
 
-    phx-port --list             List all registered projects and ports
-    phx-port --list --tree      Show ports as a directory tree
-    phx-port --list --tree --show-as-http-url
-                                Show tree with clickable http://localhost URLs
-    phx-port --register         Register the current directory for a new port
-    phx-port --register debug   Register a named port role
-    phx-port --delete <X>       Remove all ports (X = port number, directory name, or '.')
-    phx-port --delete <X> debug Remove a specific port role
+    phx-port list               Show ports as a directory tree with clickable URLs
+    phx-port list --flat        List all registered projects and ports (flat)
+    phx-port list --port-only   Show tree with port numbers instead of URLs
+    phx-port register           Register the current directory for a new port
+    phx-port register debug     Register a named port role
+    phx-port delete <X>         Remove all ports (X = port number, directory name, or '.')
+    phx-port delete <X> debug   Remove a specific port role
+    phx-port open               Open default browser for the current directory's port
+    phx-port open debug         Open browser for a named port role
 
 When piped (e.g. in a script), prints the port for the current directory,
 auto-registering if needed. An optional positional argument specifies the
@@ -161,7 +162,7 @@ fn cmd_list(config: &PathBuf) {
             }
         }
         if entries.is_empty() {
-            eprintln!("No ports registered. Use --register or PORT=$(phx-port) to add one.");
+            eprintln!("No ports registered. Use 'register' or PORT=$(phx-port) to add one.");
             return;
         }
         entries.sort_by_key(|(p, _, _)| *p);
@@ -301,7 +302,7 @@ fn cmd_list_tree(config: &PathBuf, as_url: bool) {
     }
 
     if dir_ports.is_empty() {
-        eprintln!("No ports registered. Use --register or PORT=$(phx-port) to add one.");
+        eprintln!("No ports registered. Use 'register' or PORT=$(phx-port) to add one.");
         return;
     }
 
@@ -554,6 +555,58 @@ fn cmd_port(config: &PathBuf, role: &str) {
     println!("{}", new_port);
 }
 
+fn open_url(url: &str) -> std::io::Result<process::Child> {
+    if cfg!(target_os = "macos") {
+        process::Command::new("open").arg(url).spawn()
+    } else if cfg!(target_os = "windows") {
+        process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .spawn()
+    } else {
+        process::Command::new("xdg-open").arg(url).spawn()
+    }
+}
+
+fn cmd_open(config: &PathBuf, role: &str) {
+    let cwd_str = cwd_string();
+    let doc = read_config(config);
+
+    let port = doc["ports"]
+        .as_table()
+        .and_then(|t| t.get(&cwd_str))
+        .and_then(|v| v.as_table())
+        .and_then(|t| t.get(role))
+        .and_then(|v| v.as_integer());
+
+    let port = match port {
+        Some(p) => p,
+        None => {
+            if role == DEFAULT_ROLE {
+                eprintln!("No port registered for {}", cwd_str);
+            } else {
+                eprintln!("No {} port registered for {}", role, cwd_str);
+            }
+            eprintln!(
+                "Run 'phx-port register{}' first.",
+                if role == DEFAULT_ROLE {
+                    String::new()
+                } else {
+                    format!(" {}", role)
+                }
+            );
+            process::exit(1);
+        }
+    };
+
+    let url = format!("http://localhost:{}", port);
+    eprintln!("Opening {}", url);
+
+    if let Err(e) = open_url(&url) {
+        eprintln!("Failed to open browser: {}", e);
+        process::exit(1);
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let config = config_path();
@@ -565,44 +618,61 @@ fn main() {
         Some("--help" | "-h") => {
             println!("{}", HELP);
         }
-        Some("--list" | "-l") => {
-            let rest: Vec<&str> = args.iter().skip(1).map(|s| s.as_str()).collect();
-            let tree = rest.contains(&"--tree");
-            let as_url = rest.contains(&"--show-as-http-url");
-            if tree {
-                cmd_list_tree(&config, as_url);
-            } else {
+        Some("list") => {
+            let mut flat = false;
+            let mut port_only = false;
+            for arg in args.iter().skip(1) {
+                match arg.as_str() {
+                    "--flat" => flat = true,
+                    "--port-only" => port_only = true,
+                    other => {
+                        eprintln!("Unknown argument for 'list': {}", other);
+                        process::exit(1);
+                    }
+                }
+            }
+            if flat {
                 cmd_list(&config);
+            } else {
+                cmd_list_tree(&config, !port_only);
             }
         }
-        Some("--register" | "-r") => {
+        Some("register") => {
             let role = args.get(1).map(|s| s.as_str()).unwrap_or(DEFAULT_ROLE);
             cmd_register(&config, role);
         }
-        Some("--delete" | "-d") => {
+        Some("delete") => {
             if let Some(target) = args.get(1) {
                 let role = args.get(2).map(|s| s.as_str());
                 cmd_delete(&config, target, role);
             } else {
-                eprintln!("Usage: phx-port --delete <port|name|.> [role]");
+                eprintln!("Usage: phx-port delete <port|name|.> [role]");
                 process::exit(1);
             }
         }
+        Some("open") => {
+            let role = args.get(1).map(|s| s.as_str()).unwrap_or(DEFAULT_ROLE);
+            cmd_open(&config, role);
+        }
         Some(other) if other.starts_with('-') => {
             eprintln!("Unknown option: {}", other);
+            eprintln!();
             eprintln!("{}", HELP);
             process::exit(1);
         }
-        Some(role) => {
-            // Non-flag argument is a port role name
+        Some(_) => {
             if std::io::stdout().is_terminal() {
-                println!("{}", HELP);
+                let unknown: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+                eprintln!("Unknown command: {}", unknown.join(" "));
+                eprintln!();
+                eprintln!("{}", HELP);
+                process::exit(1);
             } else {
-                cmd_port(&config, role);
+                // Piped mode: treat first arg as port role name
+                cmd_port(&config, args[0].as_str());
             }
         }
         None => {
-            // No arguments: if interactive, show help; if piped, print port
             if std::io::stdout().is_terminal() {
                 println!("{}", HELP);
             } else {
