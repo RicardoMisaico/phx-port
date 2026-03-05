@@ -18,9 +18,12 @@ USAGE:
 When piped (e.g. in a script), prints the port for the current directory,
 auto-registering if needed. Port 4000 is kept free.
 
-Config: ~/.config/phx-ports.toml";
+Config: ~/.config/phx-ports.toml (override with PHX_PORT_CONFIG env var)";
 
 fn config_path() -> PathBuf {
+    if let Ok(custom) = env::var("PHX_PORT_CONFIG") {
+        return PathBuf::from(custom);
+    }
     let home = env::var("HOME").unwrap_or_else(|_| {
         eprintln!("Error: HOME environment variable not set");
         process::exit(1);

@@ -26,7 +26,16 @@ cp target/release/phx-port ~/.local/bin/
 
 ## How it works
 
-`phx-port` maintains a simple TOML registry at `~/.config/phx-ports.toml`:
+`phx-port` maintains a simple TOML registry at `~/.config/phx-ports.toml`.
+
+Override the config location with the `PHX_PORT_CONFIG` environment variable:
+
+```bash
+export PHX_PORT_CONFIG="$HOME/.phx-ports.toml"       # Linux/macOS alternative
+export PHX_PORT_CONFIG="C:\Users\me\.phx-ports.toml"  # Windows
+```
+
+Default config:
 
 ```toml
 [ports]
