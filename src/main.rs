@@ -78,12 +78,17 @@ fn ensure_ports_table(doc: &mut DocumentMut) {
 }
 
 fn next_port(doc: &DocumentMut) -> i64 {
-    let max_port = doc["ports"]
+    let used: std::collections::BTreeSet<i64> = doc["ports"]
         .as_table()
-        .map(|t| t.iter().filter_map(|(_, v)| v.as_integer()).max())
-        .flatten()
-        .unwrap_or(4000);
-    max_port + 1
+        .map(|t| t.iter().filter_map(|(_, v)| v.as_integer()).collect())
+        .unwrap_or_default();
+
+    // Find the first gap starting from 4001
+    let mut port = 4001;
+    while used.contains(&port) {
+        port += 1;
+    }
+    port
 }
 
 fn cmd_list(config: &PathBuf) {
