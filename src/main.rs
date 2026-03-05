@@ -26,17 +26,36 @@ When piped (e.g. in a script), prints the port for the current directory,
 auto-registering if needed. An optional positional argument specifies the
 port role (default: main). Port 4000 is kept free.
 
-Config: ~/.config/phx-ports.toml (override with PHX_PORT_CONFIG env var)";
+Config: ~\\.config\\phx-ports.toml (override with PHX_PORT_CONFIG env var)
+Home:   USERPROFILE or HOMEDRIVE+HOMEPATH (Windows), HOME (Linux/macOS)";
+
+fn home_dir() -> PathBuf {
+    #[cfg(target_family = "windows")]
+    {
+        if let Ok(profile) = env::var("USERPROFILE") {
+            return PathBuf::from(profile);
+        }
+        if let (Ok(drive), Ok(path)) = (env::var("HOMEDRIVE"), env::var("HOMEPATH")) {
+            return PathBuf::from(format!("{}{}", drive, path));
+        }
+        eprintln!("Error: could not determine home directory (USERPROFILE or HOMEDRIVE+HOMEPATH not set)");
+        process::exit(1);
+    }
+    #[cfg(not(target_family = "windows"))]
+    {
+        if let Ok(home) = env::var("HOME") {
+            return PathBuf::from(home);
+        }
+        eprintln!("Error: HOME environment variable not set");
+        process::exit(1);
+    }
+}
 
 fn config_path() -> PathBuf {
     if let Ok(custom) = env::var("PHX_PORT_CONFIG") {
         return PathBuf::from(custom);
     }
-    let home = env::var("HOME").unwrap_or_else(|_| {
-        eprintln!("Error: HOME environment variable not set");
-        process::exit(1);
-    });
-    PathBuf::from(home).join(".config").join("phx-ports.toml")
+    home_dir().join(".config").join("phx-ports.toml")
 }
 
 fn read_config(path: &PathBuf) -> DocumentMut {
