@@ -4,10 +4,24 @@ Right-click any folder in the Explorer to look up or open its assigned HTTP port
 
 ## Features
 
+### Explorer context menu (right-click a folder)
+
 - **Open in Browser (phx-port)** — Looks up the port for the selected folder and opens `http://localhost:<port>` in your default browser.
 - **Show Port (phx-port)** — Displays the assigned port number in a notification.
 
-Both commands appear in the Explorer folder context menu (right-click a folder).
+### From any open file
+
+- **Open Project in Browser (phx-port)** — Detects which registered project the current file belongs to and opens its port. Available via the Command Palette or a custom keybinding.
+
+To bind it to a key, add an entry to `~/.config/Code/User/keybindings.json`:
+
+```json
+{
+  "key": "ctrl+alt+o",
+  "command": "phx-port.openFromActiveFile",
+  "when": "editorTextFocus"
+}
+```
 
 ## Prerequisites
 
