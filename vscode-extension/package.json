@@ -15,7 +15,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onCommand:phx-port.openFromActiveFile"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
