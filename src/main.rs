@@ -25,6 +25,7 @@ USAGE:
     phx-port delete <X> debug   Remove a specific port role
     phx-port open               Open default browser for the current directory's port
     phx-port open debug         Open browser for a named port role
+    phx-port launch             Alias for 'open'
 
 When piped (e.g. in a script), prints the port for the current directory,
 auto-registering if needed. An optional positional argument specifies the
@@ -650,7 +651,7 @@ fn main() {
                 process::exit(1);
             }
         }
-        Some("open") => {
+        Some("open" | "launch") => {
             let role = args.get(1).map(|s| s.as_str()).unwrap_or(DEFAULT_ROLE);
             cmd_open(&config, role);
         }
