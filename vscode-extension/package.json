@@ -26,6 +26,10 @@
       {
         "command": "phx-port.showPort",
         "title": "Show Port (phx-port)"
+      },
+      {
+        "command": "phx-port.openFromActiveFile",
+        "title": "Open Project in Browser (phx-port)"
       }
     ],
     "menus": {
@@ -41,7 +45,15 @@
           "group": "z_phxport@2"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "phx-port.openFromActiveFile",
+        "key": "ctrl+alt+o",
+        "mac": "cmd+alt+o",
+        "when": "editorTextFocus"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
