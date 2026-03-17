@@ -78,6 +78,33 @@ PORT=$(phx-port) PORT_METRICS=$(phx-port metrics) node server.js
 
 Put this in a project's `run` script and never think about ports again.
 
+### Discovering running projects
+
+```bash
+# Show which registered projects are currently running (checks actual TCP connectivity)
+phx-port running
+
+# Open a browser page listing running projects — click one to open it
+phx-port discover
+```
+
+`phx-port running` probes each registered port to check whether something is actually listening, and shows only the ones that are up:
+
+```
+$ phx-port running
+  http://localhost:4001   /home/user/projects/api
+  http://localhost:4003   /home/user/projects/shop
+  http://localhost:4004   /home/user/projects/shop (debug)
+```
+
+`phx-port discover` starts a temporary local web server on a random free port, opens your default browser with a page listing all running projects, and automatically shuts down when you click one of the links — redirecting you straight to the selected project:
+
+```
+$ phx-port discover
+Serving project list at http://localhost:52431
+Press Ctrl+C to close without selecting.
+```
+
 ### Managing registrations
 
 ```bash

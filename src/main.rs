@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Read, Write};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process;
+use std::time::Duration;
 use toml_edit::{DocumentMut, value};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,6 +25,8 @@ USAGE:
     phx-port register debug     Register a named port role
     phx-port delete <X>         Remove all ports (X = port number, directory name, or '.')
     phx-port delete <X> debug   Remove a specific port role
+    phx-port running            Show which registered projects are currently running
+    phx-port discover           Open a browser page to pick a running project
     phx-port open               Open default browser for the current directory's port
     phx-port open debug         Open browser for a named port role
     phx-port launch             Alias for 'open'
@@ -384,7 +388,7 @@ fn cmd_register(config: &PathBuf, role: &str) {
     let new_port = next_port(&doc);
     if doc["ports"]
         .as_table()
-        .map_or(true, |t| !t.contains_key(&cwd_str))
+        .is_none_or(|t| !t.contains_key(&cwd_str))
     {
         doc["ports"][&cwd_str] = toml_edit::table();
     }
@@ -453,7 +457,7 @@ fn cmd_delete(config: &PathBuf, arg: &str, role: Option<&str>) {
         }
         if let Some((dir, found_role)) = found {
             doc["ports"][&dir].as_table_mut().unwrap().remove(&found_role);
-            if doc["ports"][&dir].as_table().map_or(true, |t| t.is_empty()) {
+            if doc["ports"][&dir].as_table().is_none_or(|t| t.is_empty()) {
                 doc["ports"].as_table_mut().unwrap().remove(&dir);
             }
             write_config(config, &doc);
@@ -485,7 +489,7 @@ fn cmd_delete(config: &PathBuf, arg: &str, role: Option<&str>) {
             .and_then(|v| v.as_integer())
         {
             doc["ports"][&key].as_table_mut().unwrap().remove(role);
-            if doc["ports"][&key].as_table().map_or(true, |t| t.is_empty()) {
+            if doc["ports"][&key].as_table().is_none_or(|t| t.is_empty()) {
                 doc["ports"].as_table_mut().unwrap().remove(&key);
             }
             write_config(config, &doc);
@@ -542,7 +546,7 @@ fn cmd_port(config: &PathBuf, role: &str) {
     let new_port = next_port(&doc);
     if doc["ports"]
         .as_table()
-        .map_or(true, |t| !t.contains_key(&cwd_str))
+        .is_none_or(|t| !t.contains_key(&cwd_str))
     {
         doc["ports"][&cwd_str] = toml_edit::table();
     }
@@ -608,6 +612,186 @@ fn cmd_open(config: &PathBuf, role: &str) {
     }
 }
 
+fn is_port_open(port: i64) -> bool {
+    let addr: SocketAddr = ([127, 0, 0, 1], port as u16).into();
+    TcpStream::connect_timeout(&addr, Duration::from_millis(100)).is_ok()
+}
+
+struct RunningProject {
+    dir: String,
+    role: String,
+    port: i64,
+}
+
+fn get_running_projects(config: &PathBuf) -> Vec<RunningProject> {
+    let doc = read_config(config);
+    let table = match doc.get("ports").and_then(|v| v.as_table()) {
+        Some(t) => t,
+        None => return Vec::new(),
+    };
+    let mut running = Vec::new();
+    for (dir, dir_value) in table.iter() {
+        if let Some(dir_table) = dir_value.as_table() {
+            for (role, port_value) in dir_table.iter() {
+                if let Some(port) = port_value.as_integer()
+                    && is_port_open(port)
+                {
+                    running.push(RunningProject {
+                        dir: dir.to_string(),
+                        role: role.to_string(),
+                        port,
+                    });
+                }
+            }
+        }
+    }
+    running.sort_by_key(|r| r.port);
+    running
+}
+
+fn cmd_running(config: &PathBuf) {
+    let running = get_running_projects(config);
+    if running.is_empty() {
+        eprintln!("No registered projects are currently running.");
+        return;
+    }
+    for r in &running {
+        if r.role == DEFAULT_ROLE {
+            println!("  http://localhost:{:<5}  {}", r.port, r.dir);
+        } else {
+            println!("  http://localhost:{:<5}  {} ({})", r.port, r.dir, r.role);
+        }
+    }
+}
+
+fn build_discover_html(projects: &[RunningProject]) -> String {
+    let mut items = String::new();
+    for p in projects {
+        let name = std::path::Path::new(&p.dir)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&p.dir);
+        let role_suffix = if p.role == DEFAULT_ROLE {
+            String::new()
+        } else {
+            format!(" <span class=\"role\">({})</span>", p.role)
+        };
+        items.push_str(&format!(
+            "    <li><a href=\"/goto/{port}\">\
+             <span class=\"port\">:{port}</span> \
+             {name}{role}\
+             <div class=\"dir\">{dir}</div>\
+             </a></li>\n",
+            port = p.port,
+            name = name,
+            role = role_suffix,
+            dir = p.dir,
+        ));
+    }
+
+    let template = r#"<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>phx-port discover</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       background: #1a1a2e; color: #eee; padding: 2rem; min-height: 100vh; }
+h1 { font-size: 1.4rem; margin-bottom: 1.5rem; color: #e94560; }
+ul { list-style: none; }
+li { margin-bottom: 0.5rem; }
+a { display: block; padding: 0.75rem 1rem; background: #16213e; border-radius: 6px;
+    color: #eee; text-decoration: none; transition: background 0.2s; }
+a:hover { background: #0f3460; }
+.port { color: #e94560; font-weight: 600; margin-right: 0.5rem; }
+.dir { color: #888; font-size: 0.85rem; margin-top: 0.25rem; }
+.role { color: #aaa; }
+footer { margin-top: 2rem; color: #555; font-size: 0.8rem; }
+</style></head>
+<body>
+<h1>&#128268; phx-port &mdash; running projects</h1>
+<ul>
+ITEMS_PLACEHOLDER</ul>
+<footer>Click a project to open it. This page will close automatically.</footer>
+</body>
+</html>"#;
+
+    template.replace("ITEMS_PLACEHOLDER", &items)
+}
+
+fn cmd_discover(config: &PathBuf) {
+    let running = get_running_projects(config);
+    if running.is_empty() {
+        eprintln!("No registered projects are currently running.");
+        process::exit(1);
+    }
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap_or_else(|e| {
+        eprintln!("Failed to start server: {}", e);
+        process::exit(1);
+    });
+    let server_port = listener.local_addr().unwrap().port();
+    let server_url = format!("http://localhost:{}", server_port);
+
+    let html = build_discover_html(&running);
+
+    eprintln!("Serving project list at {}", server_url);
+    eprintln!("Press Ctrl+C to close without selecting.");
+
+    if let Err(e) = open_url(&server_url) {
+        eprintln!("Failed to open browser: {}", e);
+    }
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(mut stream) => {
+                stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
+                let mut buf = [0u8; 4096];
+                let n = match stream.read(&mut buf) {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                };
+                let request = String::from_utf8_lossy(&buf[..n]);
+                let path = request
+                    .lines()
+                    .next()
+                    .and_then(|line| line.split_whitespace().nth(1))
+                    .unwrap_or("/");
+
+                if path == "/favicon.ico" {
+                    let response = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n";
+                    let _ = stream.write_all(response.as_bytes());
+                    let _ = stream.flush();
+                    continue;
+                }
+
+                if let Some(rest) = path.strip_prefix("/goto/")
+                    && let Ok(target_port) = rest.parse::<u16>()
+                {
+                    let target_url = format!("http://localhost:{}", target_port);
+                    let response = format!(
+                        "HTTP/1.1 302 Found\r\nLocation: {}\r\nConnection: close\r\n\r\n",
+                        target_url
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+                    let _ = stream.flush();
+                    drop(stream);
+                    break;
+                }
+
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    html.len(),
+                    html
+                );
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+            }
+            Err(_) => break,
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let config = config_path();
@@ -654,6 +838,12 @@ fn main() {
         Some("open" | "launch") => {
             let role = args.get(1).map(|s| s.as_str()).unwrap_or(DEFAULT_ROLE);
             cmd_open(&config, role);
+        }
+        Some("running") => {
+            cmd_running(&config);
+        }
+        Some("discover") => {
+            cmd_discover(&config);
         }
         Some(other) if other.starts_with('-') => {
             eprintln!("Unknown option: {}", other);
